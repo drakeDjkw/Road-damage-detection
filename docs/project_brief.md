@@ -1,43 +1,89 @@
 # Project brief
 
-**Winter Road Surface Classifier** — Team Surface 3
+# Road Damage Detection — Team Surface 3
+
 Yikwa Sandrakh, Wenda Waipo, Agata Melani
 Artificial Intelligence Implementation Technologies · Baikal School of BRICS, INRTU
 
 ## User and situation
 
-Road maintenance dispatchers responsible for deciding which roads are treated — salted, plowed or sanded — and in what order need the system.
+Road maintenance planners responsible for deciding which road sections are
+repaired — patched, resurfaced or sealed — and in what order need the system.
 
-Currently, dispatchers may need to rely on manual inspection and driver reports to judge the condition of a road surface. On a large network, a stretch that has turned icy may not be noticed until a crew reaches it or a driver reports it.
+Currently, planners may need to rely on manual inspection and driver reports to
+judge the condition of a road surface. On a large network, a crack that has
+begun to spread or a pothole that has opened may not be recorded until an
+inspector reaches it or a driver reports it.
 
-The future system should help dispatchers identify road sections that may require urgent treatment by analysing road-facing camera images.
+The future system should help planners locate and categorise surface defects
+by analysing images from road-facing cameras mounted on survey or ordinary
+vehicles.
 
 ## What the system should do
 
-- **Input:** Images or video frames from road-facing cameras.
-- **Useful output:** A surface-condition label for each frame — dry, wet, snow-covered or icy — together with a confidence value.
-- **Action or decision after the output:** Staff review the sections flagged as icy or snow-covered and decide which stretches to treat first.
+- **Input:** Images or video frames from road-facing vehicle cameras.
+- **Useful output:** For each frame, a set of bounding boxes, each with a
+  defect class — longitudinal crack, transverse crack, alligator crack, other
+  corruption or pothole — and a confidence value.
+- **Action or decision after the output:** Staff review the sections with the
+  most severe or most numerous detections and decide which stretches to repair
+  first.
+
+Because the output is a box rather than a single label per frame, the system
+reports *where* on the carriageway a defect lies and *how many* defects a
+stretch contains, which is what a repair decision needs.
 
 ## Why AI may help
 
-AI may help because the system needs to recognise visual patterns associated with dry, wet, snow-covered and icy surfaces. These conditions are distinguished by texture, sheen and reflection rather than by any single measurable quantity.
+AI may help because the system needs to recognise visual patterns associated
+with cracking, surface disintegration and potholes, and to separate them from
+the many other dark, linear or patterned features present on a road: tar
+sealant, lane markings, shadows, joints, wet patches and repaired areas.
 
-Road appearance may vary because of lighting, time of day, weather, camera position, road material and passing traffic. Wet and icy surfaces in particular may look similar to one another, and the difference between them may be visible only in how light reflects from the surface. These differences may make fixed if/then rules insufficient.
+Road appearance may vary because of lighting, time of day, weather, camera
+position, pavement material and country of origin. The dataset contains
+imagery from Japan, Norway, the Czech Republic, India, the United States and
+China, and the same defect class may look markedly different between them.
+A longitudinal crack and a tar-filled seal may differ only in texture and
+edge contrast. These differences may make fixed if/then rules insufficient.
 
-Other parts of the future system may include cameras, frame extraction from video, an inference service, a dispatcher dashboard, alerts or notifications, and human review of each result before a crew is sent.
+Other parts of the future system may include cameras, frame extraction from
+video, an inference service, a planner dashboard, severity ranking per road
+section, and human review of each result before a crew is sent.
 
 ## Initial data plan
 
-- **Where the data may come from:** Public dashcam and road-camera video, supplemented by footage recorded locally by the team if winter conditions and permission allow.
-- **What we can access now:** Twenty source videos have been gathered and a first set of frames has been annotated into the four classes. The class counts are uneven — 114 snow, 79 icy, 20 dry and 8 wet — so the present set is large enough to test the pipeline but not to train a model.
-- **What still needs confirmation:** We need to confirm whether enough icy-condition footage can be obtained within the remaining winter, whether wet and icy surfaces can be separated consistently by human annotators, and whether four classes is a small enough problem for the course.
+- **Where the data comes from:** RDD2022 (Road Damage Detection 2022), a
+  public benchmark dataset of road-surface imagery with bounding-box
+  annotations, accessed through its Kaggle mirror in a pre-split form. The
+  team no longer collects its own footage.
+- **What we can access now:** The full split is available — 26,869 training,
+  5,758 validation and 5,758 test images, each with a matching label file.
+  The five classes are present in the training split in uneven numbers:
+  18,201 longitudinal cracks, 8,386 transverse cracks, 7,554 other
+  corruption, 7,527 alligator cracks and 4,628 potholes. This is large enough
+  to train, not only to test the pipeline.
+- **What still needs confirmation:** We need to confirm whether thin cracks
+  survive downscaling to small input resolutions, whether 25 epochs is
+  sufficient for the detection head to converge, whether the "other
+  corruption" class is defined consistently enough to be learnable, and
+  whether the class imbalance needs to be addressed by weighting or by
+  merging classes.
 
 ## Three next actions
 
-1. Collect and annotate more icy and wet examples, since these are the two conditions the system exists to tell apart and the two with the fewest examples.
-2. Agree a written labelling guide for the four classes, have all three team members label the same subset of frames, and measure how often they agree before the remainder is labelled.
-3. Decide whether the first version should classify all four conditions, or begin with the safety-critical split of icy versus not-icy, which the current data may support sooner.
+1. Run the 640 px and 1024 px experiments and compare mAP, recall, model
+   size and inference time across the three resolutions, since thin cracks
+   are the detections most likely to be lost at 320 px.
+2. Investigate the low recall: inspect the confusion matrix and the frames
+   with no detections, test lower confidence thresholds, and establish
+   whether 25 epochs is enough or whether the run is undertrained.
+3. Decide whether the first version should detect all five classes, or begin
+   with a coarser grouping — for example cracking versus pothole — given the
+   imbalance and the ambiguity of the "other corruption" class.
 
 ---
 
-*Detailed technical material — pipeline, model configuration, evaluation protocol, delivery plan and the record of methodological decisions — is kept in `README.md`.*
+*Detailed technical material — pipeline, model configuration, training
+hyperparameters, evaluation protocol, delivery plan and the record of
+methodological decisions — is kept in `README.md`.*
