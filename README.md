@@ -70,16 +70,20 @@ reports/baseline_metrics.json           result written by the pipeline
 notebook/road_damage_detection.ipynb    EDA and the three-model comparison
 ```
 
-## Reference result from the notebook
+## Baseline result
 
-| Model   | Test mAP50 | Precision | Recall |
-|---------|-----------|-----------|--------|
-| YOLOv8n | 0.453     | 0.516     | 0.455  |
-| YOLOv8s | 0.477     | 0.552     | 0.466  |
-| YOLO11s | 0.461     | 0.522     | 0.472  |
+Created by `python src/baseline_pipeline.py` (Apple M4, MPS, 50 epochs):
 
-The script draws its sample in sorted file order, so that the sample is the
-same on every machine. As a result it picks slightly different images from
-the notebook, and its YOLOv8n score will be close to 0.453 but not exactly
-equal. The value that counts for the baseline is the one this script writes
-to the JSON file.
+| Metric | Value |
+|---|---|
+| **mAP50 (primary)** | **0.457** |
+| Precision | 0.557 |
+| Recall | 0.449 |
+| mAP50-95 | 0.220 |
+
+Per class mAP50: other corruption 0.614, alligator crack 0.507,
+longitudinal crack 0.452, transverse crack 0.397, pothole 0.316.
+
+**Limitation:** the split is random at the image level, so frames from the
+same drive may appear in both training and test, which can make the score
+optimistic. Potholes are the rarest class and are detected worst.
