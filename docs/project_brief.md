@@ -8,7 +8,7 @@ Artificial Intelligence Implementation Technologies · Baikal School of BRICS, I
 ## User and situation
 
 Road maintenance planners responsible for deciding which road sections are
-repaired — patched, resurfaced or sealed — and in what order need the system.
+repaired patched, resurfaced or sealed and in what order need the system.
 
 Currently, planners may need to rely on manual inspection and driver reports to
 judge the condition of a road surface. On a large network, a crack that has
@@ -23,8 +23,8 @@ vehicles.
 
 - **Input:** Images or video frames from road-facing vehicle cameras.
 - **Useful output:** For each frame, a set of bounding boxes, each with a
-  defect class — longitudinal crack, transverse crack, alligator crack, other
-  corruption or pothole — and a confidence value.
+  defect class longitudinal crack, transverse crack, alligator crack, other
+  corruption or pothole  and a confidence value.
 - **Action or decision after the output:** Staff review the sections with the
   most severe or most numerous detections and decide which stretches to repair
   first.
@@ -53,15 +53,14 @@ section, and human review of each result before a crew is sent.
 
 ## Initial data plan
 
-- **Where the data comes from:** RDD2022 (Road Damage Detection 2022), a
+- **Where the data comes from:** (Road Damage Detection), a
   public benchmark dataset of road-surface imagery with bounding-box
-  annotations, accessed through its Kaggle mirror in a pre-split form. The
-  team no longer collects its own footage.
-- **What we can access now:** The full split is available — 26,869 training,
-  5,758 validation and 5,758 test images, each with a matching label file.
+  annotations, accessed through its Kaggle mirror in a pre-split form.
+- **What we can access now:** The full split is available 3,000 training,
+  300 validation and 200 test images, each with a matching label file.
   The five classes are present in the training split in uneven numbers:
-  18,201 longitudinal cracks, 8,386 transverse cracks, 7,554 other
-  corruption, 7,527 alligator cracks and 4,628 potholes. This is large enough
+   longitudinal cracks, transverse cracks, other
+  corruption, alligator cracks and potholes. This is large enough
   to train, not only to test the pipeline.
 - **What still needs confirmation:** We need to confirm whether thin cracks
   survive downscaling to small input resolutions, whether 25 epochs is
