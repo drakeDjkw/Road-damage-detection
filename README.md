@@ -30,9 +30,12 @@ alligator crack, other corruption and pothole. The project brief is in
 ## Setup
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate        # Windows: .venv\Scripts\activate
+git clone https://github.com/drakeDjkw/Road-damage-detection.git
+cd Road-damage-detection
+python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
+# place the dataset in data/RDD_SPLIT/ as data/README.md describes
+python src/baseline_pipeline.py --epochs 5
 ```
 
 ## Data
