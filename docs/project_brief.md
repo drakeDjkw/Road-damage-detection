@@ -7,13 +7,8 @@ Artificial Intelligence Implementation Technologies · Baikal School of BRICS, I
 
 ## User and situation
 
-<<<<<<< HEAD
-Road maintenance planners responsible for deciding which road sections are
-repaired patched, resurfaced or sealed and in what order need the system.
-=======
 The system is intended for road maintenance planners, who decide which road
 sections are repaired (patched, resurfaced or sealed) and in what order.
->>>>>>> 8669c217bad00b21021dc59ed00cab5783aa3d04
 
 Planners currently depend on manual inspection and driver reports to judge the
 condition of a road surface. On a large network, a crack that has begun to
@@ -27,15 +22,9 @@ vehicles.
 ## What the system should do
 
 - **Input:** Images or video frames from road-facing vehicle cameras.
-<<<<<<< HEAD
-- **Useful output:** For each frame, a set of bounding boxes, each with a
-  defect class longitudinal crack, transverse crack, alligator crack, other
-  corruption or pothole  and a confidence value.
-=======
 - **Useful output:** For each frame, a set of bounding boxes. Each box carries
   a defect class (longitudinal crack, transverse crack, alligator crack, other
   corruption or pothole) and a confidence value.
->>>>>>> 8669c217bad00b21021dc59ed00cab5783aa3d04
 - **Action or decision after the output:** Staff review the sections with the
   most severe or most numerous detections and decide which stretches to repair
   first.
@@ -67,23 +56,6 @@ section, and human review of each result before a crew is sent.
 
 ## Data and first results
 
-<<<<<<< HEAD
-- **Where the data comes from:** (Road Damage Detection), a
-  public benchmark dataset of road-surface imagery with bounding-box
-  annotations, accessed through its Kaggle mirror in a pre-split form.
-- **What we can access now:** The full split is available 3,000 training,
-  300 validation and 200 test images, each with a matching label file.
-  The five classes are present in the training split in uneven numbers:
-   longitudinal cracks, transverse cracks, other
-  corruption, alligator cracks and potholes. This is large enough
-  to train, not only to test the pipeline.
-- **What still needs confirmation:** We need to confirm whether thin cracks
-  survive downscaling to small input resolutions, whether 25 epochs is
-  sufficient for the detection head to converge, whether the "other
-  corruption" class is defined consistently enough to be learnable, and
-  whether the class imbalance needs to be addressed by weighting or by
-  merging classes.
-=======
 - **Where the data comes from:** RDD2022 (Road Damage Detection 2022), a
   public benchmark of road-surface imagery with bounding-box annotations. The
   team uses a pre-split copy of it. The team does not collect its own footage.
@@ -137,7 +109,6 @@ section, and human review of each result before a crew is sent.
     being rare, from small object size, or from confusion with other classes.
   - Thin cracks may still be lost when large source images (up to 4040 px
     wide) are downscaled to 640 px.
->>>>>>> 8669c217bad00b21021dc59ed00cab5783aa3d04
 
 ## Three next actions
 
