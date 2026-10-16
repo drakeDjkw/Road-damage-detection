@@ -1,73 +1,40 @@
-# Road Damage Detection — Team Surface 3
+# Data
 
-Yikwa Sandrakh, Wenda Waipo, Agata Melani
-Artificial Intelligence Implementation Technologies · Baikal School of BRICS, INRTU
+**Dataset:** RDD2022 (Road Damage Detection 2022), five damage classes:
+0 Longitudinal Crack, 1 Transverse Crack, 2 Alligator Crack,
+3 Other Corruption, 4 Pothole.
 
-The project detects and classifies road surface defects in images from
-vehicle cameras. It finds five classes: longitudinal crack, transverse crack,
-alligator crack, other corruption and pothole.
+**Source:** The public RDD2022 benchmark, used through a pre-split copy in
+YOLO format. The copy has 26,869 train, 5,758 val and 5,758 test images, and
+every image has a label file. The team does not collect its own footage. Ask
+a team member for the copy; the download link is not stored in Git.
 
-## Lab 02 baseline
+**Licence / access:** RDD2022 is released for research use. The exact licence
+of the copy we use is *not yet confirmed*.
 
-| | |
-|---|---|
-| Data | RDD2022 sample (seed 42): 10,000 train / 2,000 val / 2,000 test images |
-| Baseline | YOLOv8n pretrained on COCO, fine-tuned with default settings (640 px, 50 epochs) |
-| Primary metric | mAP50 on the held-out 2,000-image test sample |
-| Limitation | Image-level random split, so frames from the same drive may leak between train and test; potholes are rare |
+**Stored in Git?** No. The dataset is several GB and is provided separately.
+`data/RDD_SPLIT/`, `data/RDD_SAMPLE/` and `data/dataset/` are in
+`.gitignore`.
 
-## Environment
-
-- Python 3.12 (tested with Python 3.12.13, Ultralytics 8.4.92 and
-  torch 2.10.0+cu128)
-- An NVIDIA GPU is strongly recommended. The reference run used a Tesla T4
-  and took about 2 hours. Training on a CPU will work but is very slow.
-
-## Setup
-
-```bash
-python -m venv .venv
-source .venv/bin/activate        # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-```
-
-## Data
-
-Follow [`data/README.md`](data/README.md) to place the dataset in
-`data/RDD_SPLIT/`. The data is not stored in this repository.
-
-## Run the baseline
-
-From the repository root:
-
-```bash
-python src/baseline_pipeline.py
-```
-
-This command creates **`reports/baseline_metrics.json`**. The file holds the
-mAP50 value, the secondary metrics, the data-check counts and the limitation.
-The training runs are written to `runs/`.
-
-Options:
-
-- Add `--device cpu` to force CPU training.
-- Add `--epochs 5` for a quick check that the whole pipeline runs. Its score
-  is not the reported baseline.
-
-## Repository layout
+**Expected folder structure** (place the copy here before running):
 
 ```
-data/README.md              data source and placement
-docs/split_strategy.md      evaluation decision
-src/baseline_pipeline.py    runnable baseline
-reports/baseline_metrics.json   result written by the pipeline
-notebooks/road_damage_detection.ipynb   EDA and the three-model comparison
+data/
+  RDD_SPLIT/
+    train/images/*.jpg   train/labels/*.txt
+    val/images/*.jpg     val/labels/*.txt
+    test/images/*.jpg    test/labels/*.txt
 ```
 
-## Reference result
+Each label file has one line per object:
+`class_id x_center y_center width height`, with the box values normalised to
+[0, 1]. An empty label file means the image contains no damage. About 30% of
+the training images are like this.
 
-The earlier notebook run used the same configuration and reached
-**mAP50 = 0.512** on the test sample (precision 0.585, recall 0.501). That
-run's sample was drawn in a different file order, so a rerun of this script
-will give a close value but not exactly the same one. The value that counts
-for the baseline is the one this script writes to the JSON file.
+**Preparation:** None by hand. The pipeline:
+
+- pairs images with labels by file name;
+- validates every sampled label line;
+- draws a fixed-seed sample into `data/RDD_SAMPLE/` (5,000 train / 2,000 val
+  / 2,000 test);
+- writes `data/RDD_SAMPLE/data.yaml`.

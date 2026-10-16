@@ -1,0 +1,11 @@
+.venv/
+data/dataset/
+data/RDD_SPLIT/
+data/RDD_SAMPLE/
+reports/runs/
+runs/
+*.pt
+notebook/data.yaml
+__pycache__/
+.ipynb_checkpoints/
+.DS_Store

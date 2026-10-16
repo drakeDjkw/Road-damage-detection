@@ -3,9 +3,10 @@
 **Branch:** Our team trains the model. We fine-tune a pretrained YOLOv8n.
 
 **Training and evaluation data:** We keep the three splits of the provided
-RDD2022 copy and draw a fixed-seed sample (seed 42) from each one.
+RDD2022 copy (26,869 / 5,758 / 5,758 images) and draw a fixed-seed sample
+(seed 42) from each one.
 
-- **Training sample:** 10,000 images from `train`. The model is fitted on
+- **Training sample:** 5,000 images from `train`. The model is fitted on
   these.
 - **Validation sample:** 2,000 images from `val`. It is used only during
   training, for early stopping and for choosing the best epoch.
@@ -15,8 +16,7 @@ RDD2022 copy and draw a fixed-seed sample (seed 42) from each one.
 
 **Split method:** Random, at the image level, as supplied with the dataset
 copy. The split is not grouped by drive, road or country. In the sample, the
-class proportions stay within about 0.5 percentage points of the full
-training set (the validation sample is within about 2 points).
+class proportions stay within about 1.5 percentage points of the full splits.
 
 **Does the evaluation resemble future input?** Partly. The test images come
 from the same six countries and the same kinds of cameras as the training
@@ -27,7 +27,5 @@ new city. This is a limitation for deployment on unseen roads.
 **Limitation of this first evaluation:** Some RDD images come from
 consecutive frames of the same drive. A random image-level split can
 therefore put near-identical scenes in both training and test, which would
-make the score optimistic. The dataset also contains duplicated
-" (1)" copies. The pipeline reports how many base file names appear in both
-the training and test samples. A later version should group images by drive
-or location, or at least remove duplicates across splits.
+make the score optimistic. In addition, potholes make up only about 9% of
+the test objects (282 boxes), so the pothole score has wide uncertainty.

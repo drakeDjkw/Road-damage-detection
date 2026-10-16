@@ -35,7 +35,8 @@ MODEL_DESC = "YOLOv8n pretrained on COCO, fine-tuned with default Ultralytics se
 LIMITATION = (
     "Image-level random split from the provided RDD2022 copy: images from the "
     "same drive or road may appear in both training and test, so the score may "
-    "be optimistic; potholes are the rarest class (~10% of objects)."
+    "be optimistic; potholes are the rarest class (~9-10% of objects) and "
+    "are detected worst."
 )
 
 
@@ -44,14 +45,15 @@ def parse_args():
     p.add_argument("--data-dir", default=ROOT / "data" / "RDD_SPLIT", type=Path)
     p.add_argument("--sample-dir", default=ROOT / "data" / "RDD_SAMPLE", type=Path)
     p.add_argument("--out", default=ROOT / "reports" / "baseline_metrics.json", type=Path)
-    p.add_argument("--train-n", type=int, default=10000)
+    p.add_argument("--train-n", type=int, default=5000)
     p.add_argument("--val-n", type=int, default=2000)
     p.add_argument("--test-n", type=int, default=2000)
     p.add_argument("--epochs", type=int, default=50)
     p.add_argument("--imgsz", type=int, default=640)
     p.add_argument("--batch", type=int, default=16)
     p.add_argument("--seed", type=int, default=42)
-    p.add_argument("--device", default=None, help="e.g. 0 for GPU, cpu for CPU")
+    p.add_argument("--device", default=None,
+                   help="mps (Apple GPU), 0 (CUDA GPU) or cpu; default: auto")
     return p.parse_args()
 
 
@@ -127,6 +129,16 @@ def write_data_yaml(sample_dir: Path) -> Path:
     return yaml_path
 
 
+def pick_device():
+    """Use CUDA if present, then Apple MPS, otherwise CPU."""
+    import torch
+    if torch.cuda.is_available():
+        return "0"
+    if getattr(torch.backends, "mps", None) and torch.backends.mps.is_available():
+        return "mps"
+    return "cpu"
+
+
 # ---------------------------------------------------------------- main
 def main():
     args = parse_args()
@@ -172,21 +184,25 @@ def main():
     # 4. Fit the baseline (pretrained YOLOv8n, default settings)
     from ultralytics import YOLO  # imported here so the checks run without it
 
+    device = args.device or pick_device()
+    print(f"Device: {device}")
+    runs_dir = ROOT / "reports" / "runs" / "detect"
+
     model = YOLO("yolov8n.pt")
     train_kwargs = dict(
         data=str(data_yaml), epochs=args.epochs, imgsz=args.imgsz,
         batch=args.batch, seed=args.seed, deterministic=True,
-        project=str(ROOT / "runs"), name="yolov8n_baseline", exist_ok=True,
+        project=str(runs_dir), name="baseline_YOLOv8n", exist_ok=True,
+        device=device,
     )
-    if args.device is not None:
-        train_kwargs["device"] = args.device
     model.train(**train_kwargs)
 
     # 5. Evaluate once on the held-out test sample
-    best = ROOT / "runs" / "yolov8n_baseline" / "weights" / "best.pt"
+    best = runs_dir / "baseline_YOLOv8n" / "weights" / "best.pt"
     metrics = YOLO(str(best)).val(
         data=str(data_yaml), split="test", imgsz=args.imgsz,
-        project=str(ROOT / "runs"), name="yolov8n_test", exist_ok=True,
+        project=str(runs_dir), name="baseline_YOLOv8n_test", exist_ok=True,
+        device=device,
     )
     per_class_map50 = {
         CLASS_NAMES[int(c)]: round(float(metrics.box.ap50[i]), 4)
@@ -202,7 +218,7 @@ def main():
         "evaluation": (f"{sample_info['test']['images']} held-out test images "
                        f"({sample_info['test']['objects']} objects), used only once "
                        "after training"),
-        "model": f"{MODEL_DESC}; {args.epochs} epochs, {args.imgsz} px",
+        "model": f"{MODEL_DESC}; {args.epochs} epochs, {args.imgsz} px, device {device}",
         "metric": {"name": "mAP50", "value": round(float(metrics.box.map50), 4)},
         "secondary_metrics": {
             "precision": round(float(metrics.box.mp), 4),
