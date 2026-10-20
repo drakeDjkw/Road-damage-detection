@@ -2,9 +2,6 @@
 
 # Road Damage Detection — Team Surface 3
 
-Yikwa Sandrakh, Wenda Waipo, Agata Melani
-Artificial Intelligence Implementation Technologies · Baikal School of BRICS, INRTU
-
 ## User and situation
 
 The system is intended for road maintenance planners, who decide which road
