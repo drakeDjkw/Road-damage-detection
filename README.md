@@ -58,7 +58,7 @@ committed.
 
 Options:
 
-- Add `--epochs 2` for a quick check that the whole pipeline runs. Its score
+- Add `--epochs 5` for a quick check that the whole pipeline runs. Its score
   is not the reported baseline.
 - Add `--device cpu` to force the CPU.
 
