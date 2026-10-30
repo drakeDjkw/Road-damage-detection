@@ -35,7 +35,7 @@ cd Road-damage-detection
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 # place the dataset in data/RDD_SPLIT/ as data/README.md describes
-python src/baseline_pipeline.py --epochs 5
+python src/baseline_pipeline.py --epochs 25
 ```
 
 ## Data
@@ -62,14 +62,50 @@ Options:
   is not the reported baseline.
 - Add `--device cpu` to force the CPU.
 
+## Lab 04 inference demo
+
+The demo sends one road image through the Lab 02 baseline model and records
+two attempts: a normal one and a simulated "inference unavailable" one.
+
+It needs the trained baseline weights at
+`reports/runs/detect/baseline_YOLOv8n/weights/best.pt`. That file is
+created by `python src/baseline_pipeline.py` and is not stored in Git. Use
+`--weights` to point to another copy.
+
+From the repository root:
+
+```bash
+python src/inference_demo.py --input-ref data/RDD_SPLIT/test/images/Japan_012962.jpg
+```
+
+This creates **`reports/inference_demo.jsonl`** with two lines:
+
+| Line | status | simulated | action |
+|---|---|---|---|
+| 1 | `ok` or `review` | `false` | add detections to the section summary for the planner / send frame to the planner's review queue |
+| 2 | `unavailable` | `true` | mark frame as not checked and retry in the next batch run |
+
+**Decision rule (decision-v1, provisional):** boxes with confidence ≥ 0.50
+are confirmed. Boxes between 0.25 and 0.50 send the frame to review. A
+frame that fails the input check is rejected with a reason and also goes to
+review, so it is never counted as damage-free road.
+
+The path is drawn in
+[`docs/inference_architecture.drawio`](docs/inference_architecture.drawio);
+open it at <https://app.diagrams.net>.
+
 ## Repository layout
 
 ```
 data/README.md                          data source and placement
 docs/project_brief.md                   project brief
 docs/split_strategy.md                  evaluation decision
+docs/project_decisions.md               Lab 03 acceptance decisions
+docs/inference_architecture.drawio      Lab 04 inference path diagram
 src/baseline_pipeline.py                runnable baseline
+src/inference_demo.py                   Lab 04 inference demo
 reports/baseline_metrics.json           result written by the pipeline
+reports/inference_demo.jsonl            records written by the demo
 notebook/road_damage_detection.ipynb    EDA and the three-model comparison
 ```
 
