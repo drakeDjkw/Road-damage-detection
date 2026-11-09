@@ -69,8 +69,8 @@ two attempts: a normal one and a simulated "inference unavailable" one.
 
 It needs the trained baseline weights at
 `reports/runs/detect/baseline_YOLOv8n/weights/best.pt`. That file is
-created by `python src/baseline_pipeline.py` and is not stored in Git. Use
-`--weights` to point to another copy.
+created by `python src/baseline_pipeline.py` and is not stored in Git.
+Optional: `--section-id` sets the road-section ID (default `demo-section-01`).
 
 From the repository root:
 
@@ -94,6 +94,50 @@ The path is drawn in
 [`docs/inference_architecture.drawio`](docs/inference_architecture.drawio);
 open it at <https://app.diagrams.net>.
 
+## Lab 05 input validation
+
+Before prediction, every request is checked against
+[`config/input_contract.json`](config/input_contract.json) by
+[`src/input_validation.py`](src/input_validation.py).
+
+| Result | What happens | `action` |
+|---|---|---|
+| pass | the Lab 04 prediction runs | `predict` |
+| warning | no prediction; a person reviews the frame | `route_for_review` |
+| error | no prediction; the input is rejected | `reject_input` |
+
+If several rules fail, the most severe result wins: error > warning > pass.
+
+| Rule | Type | Severity | Why |
+|---|---|---|---|
+| `required_fields_present` | structural | error | the request must name the file, format, size and source |
+| `format_supported` | structural | error | the baseline only reads .jpg/.jpeg/.png |
+| `dimensions_valid` | structural | error | width and height must be positive whole numbers |
+| `section_id_present` | project-specific | error | Lab 03: a frame without a road-section ID is rejected |
+| `source_approved` | project-specific | warning | Lab 03: cameras outside the six RDD2022 sources are out of scope |
+| `size_in_evaluated_range` | project-specific | warning | the training sample's smallest side was 512 px; smaller frames were never evaluated |
+| `preprocessing_identity_matches` | runtime | error | the model was evaluated with `letterbox-640-v1` (set in `src/inference_demo.py`, not by the request) |
+
+These are request-level checks. They test the values supplied in the request,
+not the file itself: the validator does not open, find or decode the image.
+
+From the repository root:
+
+```bash
+python src/inference_demo.py
+python -m unittest tests/test_input_validation.py
+```
+
+The first command runs three requests and writes
+**`reports/validation_demo.jsonl`**: one pass (prediction runs), one warning
+(`China_Drone` source) and one error (`gif` format and no section ID, plus an
+unknown source). Each line shows every check with its observed value and
+status, the combined status, the action and `prediction_called`. All of these
+are linked by one `request_id`.
+
+The passing request needs the baseline weights, as in Lab 04. The tests use a
+stub instead of the model and need no weights or data.
+
 ## Repository layout
 
 ```
@@ -103,9 +147,13 @@ docs/split_strategy.md                  evaluation decision
 docs/project_decisions.md               Lab 03 acceptance decisions
 docs/inference_architecture.drawio      Lab 04 inference path diagram
 src/baseline_pipeline.py                runnable baseline
-src/inference_demo.py                   Lab 04 inference demo
+src/inference_demo.py                   Lab 04 inference demo + Lab 05 validation demo
+src/input_validation.py                 Lab 05 input validator
+config/input_contract.json              Lab 05 input contract
+tests/test_input_validation.py          Lab 05 tests
 reports/baseline_metrics.json           result written by the pipeline
 reports/inference_demo.jsonl            records written by the demo
+reports/validation_demo.jsonl           Lab 05 validation trace
 notebook/road_damage_detection.ipynb    EDA and the three-model comparison
 ```
 

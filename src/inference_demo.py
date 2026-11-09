@@ -1,10 +1,14 @@
-"""Lab 04: connect one project input to a traceable response.
+"""Road Damage Detection (Team Surface 3): inference demo.
 
-Road Damage Detection (Team Surface 3). One road image goes through the Lab 02
-YOLOv8n baseline; the response and a simulated "unavailable" attempt are saved
-to reports/inference_demo.jsonl.
+Lab 05 (default): three requests (pass, warning, error) are checked against
+config/input_contract.json by src/input_validation.py. Only a passing request
+reaches the Lab 04 prediction. Writes reports/validation_demo.jsonl.
 
-Run from the repository root:
+    python src/inference_demo.py
+
+Lab 04: one road image goes through the Lab 02 YOLOv8n baseline; the response
+and a simulated "unavailable" attempt are saved to reports/inference_demo.jsonl.
+
     python src/inference_demo.py --input-ref data/RDD_SPLIT/test/images/Japan_012962.jpg
 """
 
@@ -12,12 +16,16 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 import time
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "src"))
+
+from input_validation import load_contract, route_request  # noqa: E402
 
 MODEL_VERSION = "baseline-v1"   # YOLOv8n from Lab 02 (test mAP50 0.457)
 RULE_VERSION = "decision-v1"    # confidence bands below
@@ -31,6 +39,12 @@ UNAVAILABLE_ACTION = "mark frame as not checked and retry in the next batch run"
 WEIGHTS = ROOT / "reports" / "runs" / "detect" / "baseline_YOLOv8n" / "weights" / "best.pt"
 IMAGE_EXTS = {".jpg", ".jpeg", ".png"}
 IMGSZ = 640
+
+# Runtime identity of the deterministic preprocessing used at prediction time:
+# Ultralytics letterbox resize to 640 px (aspect ratio kept, grey padding),
+# RGB, values scaled to 0-1. Defined here, beside the inference code, and never
+# taken from the request. No training augmentation runs during predict().
+PREPROCESSING_ID = "letterbox-640-v1"
 
 # decision-v1 (provisional: Lab 03 left the cutoff values open).
 MIN_CONF = 0.25      # boxes below this are ignored (Ultralytics predict default)
@@ -72,11 +86,12 @@ def load_model():
     return _model
 
 
-def project_predict(input_ref: str) -> dict[str, Any]:
+def project_predict(input_ref: str, section_id: str | None = None) -> dict[str, Any]:
     """Return one prediction by reusing the Lab 02 baseline model.
 
     Shape: {"result": {...}, "needs_review": bool}
     """
+    section_id = section_id or SECTION_ID
     path = Path(input_ref)
     if not path.is_absolute():
         path = ROOT / path
@@ -85,7 +100,7 @@ def project_predict(input_ref: str) -> dict[str, Any]:
     if reason:
         # Lab 03: an invalid frame is rejected with a reason and never counted
         # as damage-free road, so a person must look at it.
-        return {"result": {"section_id": SECTION_ID, "rejected": reason},
+        return {"result": {"section_id": section_id, "rejected": reason},
                 "needs_review": True}
 
     model = load_model()
@@ -106,7 +121,7 @@ def project_predict(input_ref: str) -> dict[str, Any]:
 
     n_review = sum(not d["confirmed"] for d in detections)
     result = {
-        "section_id": SECTION_ID,
+        "section_id": section_id,
         "n_detections": len(detections),
         "n_confirmed": len(detections) - n_review,
         "n_review": n_review,
@@ -148,6 +163,66 @@ def run_attempt(input_ref: str, *, simulate_unavailable: bool) -> dict[str, Any]
     }
 
 
+def predict_from_request(request: dict[str, Any]) -> dict[str, Any]:
+    """Lab 05 wrapper: run the Lab 04 prediction for a request that passed validation."""
+    started = time.perf_counter()
+    try:
+        prediction = project_predict(request["input_ref"], request.get("section_id"))
+    except Exception as error:   # real failure, e.g. weights missing
+        print(f"prediction failed: {error}")
+        status, result, action = "unavailable", None, UNAVAILABLE_ACTION
+    else:
+        result = prediction["result"]
+        needs_review = bool(prediction.get("needs_review", False))
+        status = "review" if needs_review else "ok"
+        action = REVIEW_ACTION if needs_review else NORMAL_ACTION
+    return {
+        "status": status,
+        "result": result,
+        "action": action,
+        "model_version": MODEL_VERSION,
+        "rule_version": RULE_VERSION,
+        "latency_ms": round((time.perf_counter() - started) * 1000, 1),
+    }
+
+
+# Lab 05 demonstration requests: one per validation status.
+DEMO_REQUESTS = [
+    {   # pass: a test frame from an RDD2022 Japanese vehicle camera
+        "case": "pass",
+        "input_ref": "data/RDD_SPLIT/test/images/Japan_012962.jpg",
+        "format": "jpg", "width": 600, "height": 600,
+        "source": "Japan", "section_id": "JP-R12-km034",
+    },
+    {   # warning: readable, but a drone camera is outside the approved sources
+        "case": "warning",
+        "input_ref": "data/incoming/China_Drone_000123.jpg",
+        "format": "jpg", "width": 512, "height": 512,
+        "source": "China_Drone", "section_id": "CN-S07-km002",
+    },
+    {   # error: GIF format and no section ID (plus an unapproved source, a warning)
+        "case": "error",
+        "input_ref": "data/incoming/dashcam_0042.gif",
+        "format": "gif", "width": 640, "height": 512,
+        "source": "dashcam-unknown", "section_id": "",
+    },
+]
+
+
+def run_validation_demo(output: Path) -> None:
+    contract = load_contract()
+    records = []
+    for request in DEMO_REQUESTS:
+        record = route_request(request, predict_from_request, contract, PREPROCESSING_ID)
+        record = {"case": request["case"], **record}
+        records.append(record)
+        print(f"{request['case']:<8} -> {record['validation_status']:<8} "
+              f"{record['action']:<17} prediction_called={record['prediction_called']}"
+              + (f"  failed: {', '.join(record['failed_rules'])}" if record["failed_rules"] else ""))
+    write_evidence(records, output)
+    print(f"Saved {len(records)} records to {output}")
+
+
 def write_evidence(records: list[dict[str, Any]], output: Path) -> None:
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(
@@ -159,13 +234,20 @@ def write_evidence(records: list[dict[str, Any]], output: Path) -> None:
 def main() -> None:
     global SECTION_ID
     parser = argparse.ArgumentParser()
-    parser.add_argument("--input-ref", required=True,
-                        help="Path to one road image, relative to the repository root")
+    parser.add_argument("--input-ref", default=None,
+                        help="Lab 04: path to one road image. Omit to run the Lab 05 validation demo")
     parser.add_argument("--section-id", default=SECTION_ID,
                         help="Road-section ID the frame belongs to")
-    parser.add_argument("--output", default="reports/inference_demo.jsonl")
+    parser.add_argument("--output", default=None,
+                        help="default: reports/validation_demo.jsonl (Lab 05) or "
+                             "reports/inference_demo.jsonl (Lab 04)")
     args = parser.parse_args()
     SECTION_ID = args.section_id
+
+    default_out = "reports/inference_demo.jsonl" if args.input_ref else "reports/validation_demo.jsonl"
+    output = Path(args.output or default_out)
+    if not output.is_absolute():
+        output = ROOT / output
 
     # Load the model before timing, so latency_ms measures one prediction
     # rather than the one-off model load.
@@ -174,13 +256,14 @@ def main() -> None:
     except Exception as error:
         print(f"model not loaded: {error}")
 
+    if args.input_ref is None:
+        run_validation_demo(output)
+        return
+
     records = [
         run_attempt(args.input_ref, simulate_unavailable=False),
         run_attempt(args.input_ref, simulate_unavailable=True),
     ]
-    output = Path(args.output)
-    if not output.is_absolute():
-        output = ROOT / output
     write_evidence(records, output)
 
     for record in records:

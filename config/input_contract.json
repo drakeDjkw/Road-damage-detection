@@ -1,0 +1,46 @@
+{
+  "contract_version": "road-input-v1",
+  "description": "Request-level input contract for the road damage inference demo. Values are checked as supplied in the request; the file itself is not opened by the validator.",
+  "required_fields": ["input_ref", "format", "width", "height", "source"],
+  "allowed_formats": ["jpg", "jpeg", "png"],
+  "evaluated_min_side_px": 512,
+  "approved_sources": [
+    "Japan",
+    "India",
+    "Czech",
+    "Norway",
+    "United_States",
+    "China_MotorBike"
+  ],
+  "expected_preprocessing_id": "letterbox-640-v1",
+  "rules": {
+    "required_fields_present": {
+      "severity": "error",
+      "why": "The demo cannot build a traceable request without these fields."
+    },
+    "format_supported": {
+      "severity": "error",
+      "why": "The Lab 02 baseline only reads .jpg/.jpeg/.png (IMAGE_EXTS in src/baseline_pipeline.py)."
+    },
+    "dimensions_valid": {
+      "severity": "error",
+      "why": "Width and height must be positive whole numbers to describe an image at all."
+    },
+    "section_id_present": {
+      "severity": "error",
+      "why": "Lab 03: a frame without a road-section ID is rejected, because its detections cannot be added to any section summary."
+    },
+    "source_approved": {
+      "severity": "warning",
+      "why": "Lab 03: cameras outside the RDD2022 sources (six source prefixes in the training data) are out of scope for the first version, so their frames go to a person instead of the model."
+    },
+    "size_in_evaluated_range": {
+      "severity": "warning",
+      "why": "The 5,000-image training sample had a smallest side of 512 px (notebook EDA). Smaller frames were never evaluated, and thin cracks may not survive."
+    },
+    "preprocessing_identity_matches": {
+      "severity": "error",
+      "why": "The model was evaluated with letterbox resize to 640 px; any other preprocessing would make the Lab 02 scores meaningless."
+    }
+  }
+}
