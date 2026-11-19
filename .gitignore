@@ -9,3 +9,5 @@ notebook/data.yaml
 __pycache__/
 .ipynb_checkpoints/
 .DS_Store
+starter/.env
+__pycache__/
