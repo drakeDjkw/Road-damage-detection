@@ -1,0 +1,20 @@
+{
+  "contract_version": "road-damage-upload-v1",
+  "error_action": "reject_input",
+  "maximum_upload_bytes": 10485760,
+  "allowed_content_types": [
+    "image/jpeg",
+    "image/png"
+  ],
+  "allowed_decoded_formats": [
+    "JPEG",
+    "PNG"
+  ],
+  "allowed_decoded_modes": [
+    "RGB",
+    "RGBA",
+    "L"
+  ],
+  "minimum_width": 64,
+  "minimum_height": 64
+}

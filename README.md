@@ -97,8 +97,8 @@ open it at <https://app.diagrams.net>.
 ## Lab 05 input validation
 
 Before prediction, every request is checked against
-[`config/input_contract.json`](config/input_contract.json) by
-[`src/input_validation.py`](src/input_validation.py).
+[`starter/config/input_contract.json`](starter/config/input_contract.json) by
+[`starter/src/input_validation.py`](starter/src/input_validation.py).
 
 | Result | What happens | `action` |
 |---|---|---|
@@ -125,6 +125,12 @@ From the repository root:
 
 ```bash
 python src/inference_demo.py
+```
+
+The Lab 05 tests run from `starter/`:
+
+```bash
+cd starter
 python -m unittest tests/test_input_validation.py
 ```
 
@@ -138,6 +144,82 @@ are linked by one `request_id`.
 The passing request needs the baseline weights, as in Lab 04. The tests use a
 stub instead of the model and need no weights or data.
 
+## Lab 06 cloud service
+
+`starter/` holds a FastAPI service that puts the Lab 02 model behind an HTTP
+API on a Yandex Cloud VM (Ubuntu 24.04, 2 vCPU, 4 GB RAM, CPU inference).
+
+Each upload passes two layers of checks before the model runs:
+
+| Layer | Contract | Code | What it checks |
+| --- | --- | --- | --- |
+| File | `config/upload_contract.json` | `image_validation.py` | content type, size ≤ 10 MB, the bytes decode as JPEG/PNG, colour mode, at least 64×64 px |
+| Project (Lab 05) | `config/input_contract.json` | `src/input_validation.py` | section ID, approved camera source, smallest side ≥ 512 px, preprocessing `letterbox-640-v1` |
+
+The Lab 05 validator now receives the format, width and height that the
+server decoded from the file, not values the client claims.
+
+| Result | HTTP | `action` | Model called |
+| --- | --- | --- | --- |
+| pass | 200 | `predict` | yes, then decision-v1 sorts the boxes (≥ 0.50 confirmed, 0.25–0.50 → review queue) |
+| warning | 200 | `route_for_review` | no |
+| error | 400 | `reject_input` | no |
+
+Every request appends one line to `starter/reports/yolo_predictions.jsonl`
+with the request ID, section ID, decoded image properties, every check,
+`status`, `action`, `prediction_called` and `prediction`.
+
+### Start the service on the VM
+
+The weights are not in Git. Copy them from the computer that trained the model:
+
+```bash
+# on your own computer, from the repository root
+ssh <username>@<public-ip> "mkdir -p ~/Road-damage-detection/starter/models"
+scp reports/runs/detect/baseline_YOLOv8n/weights/best.pt \
+    <username>@<public-ip>:~/Road-damage-detection/starter/models/best.pt
+```
+
+Then on the VM:
+
+```bash
+git clone https://github.com/drakeDjkw/Road-damage-detection.git   # or: git pull
+cd Road-damage-detection/starter
+sudo apt update && sudo apt install -y python3-venv libgl1 tmux
+python3 -m venv .venv && source .venv/bin/activate
+python3 -m pip install --upgrade pip
+python3 -m pip install --no-cache-dir -r requirements.txt
+cp .env.example .env
+python3 -m unittest tests/test_app.py tests/test_input_validation.py
+tmux new -s api
+python3 -m uvicorn app:app --host 0.0.0.0 --port 8000
+```
+
+Run uvicorn from inside `starter/`. Detach from tmux with `Ctrl+B`, then `D`;
+the service keeps running if SSH disconnects. Port 8000 must be open in the
+VM's security group.
+
+### Demo requests
+
+Open `http://<public-ip>:8000/docs` → `POST /predict` → **Try it out**:
+
+| Request | `request_id` | `section_id` | `source` | file | Expected |
+| --- | --- | --- | --- | --- | --- |
+| valid | `req-cloud-001` | `demo-section-01` | `Japan` | `Japan_012962.jpg` | 200, `predict`, detections |
+| rejected | `req-cloud-002` | `demo-section-01` | `Japan` | any `.txt` | 400, `reject_input`, `prediction_called: false` |
+
+Or from another computer:
+
+```bash
+curl -F request_id=req-cloud-001 -F section_id=demo-section-01 -F source=Japan \
+     -F file=@Japan_012962.jpg http://<public-ip>:8000/predict
+```
+
+Then on the VM: `tail -n 2 reports/yolo_predictions.jsonl`.
+
+These detections come from the Lab 02 baseline. They show that the
+deployment path works; they are not new evaluation results.
+
 ## Repository layout
 
 ```
@@ -146,11 +228,15 @@ docs/project_brief.md                   project brief
 docs/split_strategy.md                  evaluation decision
 docs/project_decisions.md               Lab 03 acceptance decisions
 docs/inference_architecture.drawio      Lab 04 inference path diagram
-src/baseline_pipeline.py                runnable baseline
-src/inference_demo.py                   Lab 04 inference demo + Lab 05 validation demo
-src/input_validation.py                 Lab 05 input validator
-config/input_contract.json              Lab 05 input contract
-tests/test_input_validation.py          Lab 05 tests
+starter/src/baseline_pipeline.py        runnable baseline
+starter/src/inference_demo.py           Lab 04 inference demo + Lab 05 validation demo
+starter/src/input_validation.py         Lab 05 input validator
+starter/config/input_contract.json      Lab 05 input contract (project rules)
+starter/config/upload_contract.json     Lab 06 upload contract (file checks)
+starter/image_validation.py             Lab 06 file checks
+starter/app.py                          Lab 06 FastAPI service
+starter/tests/test_input_validation.py  Lab 05 tests
+starter/tests/test_app.py               Lab 06 tests
 reports/baseline_metrics.json           result written by the pipeline
 reports/inference_demo.jsonl            records written by the demo
 reports/validation_demo.jsonl           Lab 05 validation trace
