@@ -217,6 +217,12 @@ curl -F request_id=req-cloud-001 -F section_id=demo-section-01 -F source=Japan \
 
 Then on the VM: `tail -n 2 reports/yolo_predictions.jsonl`.
 
+### Evidence
+
+- [`reports/cloud_demo.jsonl`](reports/cloud_demo.jsonl): trace of one valid request (`req-cloud-001` → `predict`) and one rejected request (`req-cloud-002` → `reject_input`).
+- [`docs/lab06_browser_health.png`](docs/lab06_browser_health.png): `GET /health` opened from another computer, with the trained model loaded.
+- [`docs/lab06_browser_predict.png`](docs/lab06_browser_predict.png): `POST /predict` sent from another computer through `/docs` (`req-browser-001`, HTTP 200).
+
 These detections come from the Lab 02 baseline. They show that the
 deployment path works; they are not new evaluation results.
 
