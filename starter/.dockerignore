@@ -1,0 +1,13 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.git/
+.gitignore
+reports/
+*.jsonl
+models/
+*.pt
+runs/
+.DS_Store

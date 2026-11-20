@@ -226,6 +226,41 @@ Then on the VM: `tail -n 2 reports/yolo_predictions.jsonl`.
 These detections come from the Lab 02 baseline. They show that the
 deployment path works; they are not new evaluation results.
 
+## Lab 07 container
+
+`starter/Dockerfile` packages the Lab 06 service as a Docker image. The image
+holds the code and packages only. Three things are connected when the
+container starts:
+
+| Connection | Flag | Why |
+| --- | --- | --- |
+| API port | `-p 8000:8000` | other computers reach the service through the VM |
+| Configuration | `--env-file .env` | `.env` is not in the image or in Git |
+| Model weights | `--mount ... dst=/app/models,readonly` | `best.pt` is not in Git or the image |
+| Evidence | `--mount ... dst=/app/reports` | JSONL records stay on the VM when the container is replaced |
+
+On the VM, after `models/best.pt` is in place (see Lab 06):
+
+```bash
+cd ~/Road-damage-detection/starter
+cp .env.example .env
+mkdir -p reports
+sudo docker build -t road-damage-api:1 .
+sudo docker run --rm road-damage-api:1 \
+    python -m unittest tests/test_app.py tests/test_input_validation.py
+sudo docker run -d --rm --name road-damage-api \
+  -p 8000:8000 \
+  --env-file .env \
+  --mount type=bind,src="$(pwd)/models",dst=/app/models,readonly \
+  --mount type=bind,src="$(pwd)/reports",dst=/app/reports \
+  road-damage-api:1
+sudo docker logs road-damage-api
+```
+
+Then use the demo requests from Lab 06 at `http://<public-ip>:8000/docs` and
+check `tail -n 2 reports/yolo_predictions.jsonl`. Stop it with
+`sudo docker stop road-damage-api`.
+
 ## Repository layout
 
 ```
