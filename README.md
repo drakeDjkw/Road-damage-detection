@@ -261,6 +261,11 @@ Then use the demo requests from Lab 06 at `http://<public-ip>:8000/docs` and
 check `tail -n 2 reports/yolo_predictions.jsonl`. Stop it with
 `sudo docker stop road-damage-api`.
 
+### Evidence
+
+- [`docs/lab07_docker_health.png`](docs/docker_health.png): `/health` from another computer, `"environment": "docker"`.
+- [`docs/lab07_container_replaced.png`](docs/container_replaced.png): `req-docker-001` (valid, `predict`) and `req-docker-002` (text file, `reject_input`) are still in `reports/yolo_predictions.jsonl` after the container was replaced (`ac6b4f…` → `d80c4d…`).
+
 ## Repository layout
 
 ```
